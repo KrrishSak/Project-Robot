@@ -1,0 +1,106 @@
+const roads = [
+  "Alice's House-Bob's House", "Alice's House-Cabin",
+  "Alice's House-Post Office", "Bob's House-Town Hall",
+  "Daria's House-Ernie's House", "Daria's House-Town Hall",
+  "Ernie's House-Grete's House", "Grete's House-Farm",
+  "Grete's House-Shop", "Marketplace-Farm",
+  "Marketplace-Post Office", "Marketplace-Shop",
+  "Marketplace-Town Hall", "Shop-Town Hall"
+];
+
+const initialParcels = [
+  { place: "Daria's House", address: "Post Office" },
+  { place: "Bob's House", address: "Ernie's House" },
+  { place: "Post Office", address: "Alice's House" },
+  { place: "Ernie's House", address: "Farm" },
+  { place: "Alice's House", address: "Shop" }
+];
+
+const predefinedRoute = [
+  "Alice's House", "Cabin", "Alice's House", "Bob's House",
+  "Town Hall", "Daria's House", "Ernie's House",
+  "Grete's House", "Shop", "Grete's House", "Farm",
+  "Marketplace", "Post Office"
+];
+
+function buildRoadGraph(roads) {
+  let graph = Object.create(null);
+
+  function addConnection(from, to) {
+    if (!graph[from]) graph[from] = [];
+    graph[from].push(to);
+  }
+
+  for (let road of roads) {
+    let [from, to] = road.split("-");
+    addConnection(from, to);
+    addConnection(to, from);
+  }
+
+  return graph;
+}
+
+let roadGraph = buildRoadGraph(roads);
+
+class VillageState {
+  constructor(currentLocation, parcels) {
+    this.currentLocation = currentLocation;
+    this.parcels = parcels;
+  }
+
+  move(destination) {
+    if (!roadGraph[this.currentLocation].includes(destination)) {
+      return this;
+    }
+
+    let updatedParcels = this.parcels.map(parcel => {
+      if (parcel.place !== this.currentLocation) return parcel;
+      return { place: destination, address: parcel.address };
+    });
+
+    let undeliveredParcels = updatedParcels.filter(parcel =>
+      parcel.place !== parcel.address
+    );
+
+    return new VillageState(destination, undeliveredParcels);
+  }
+}
+
+function pickRandom(array) {
+  let index = Math.floor(Math.random() * array.length);
+  return array[index];
+}
+
+function randomStrategyRobot(state) {
+  return {
+    direction: pickRandom(roadGraph[state.currentLocation]),
+    memory: []
+  };
+}
+
+function fixedRouteRobot(state, memory) {
+  if (memory.length === 0) {
+    memory = predefinedRoute;
+  }
+  return {
+    direction: memory[0],
+    memory: memory.slice(1)
+  };
+}
+
+function simulateDelivery(state, memory, robotStrategy) {
+  let turns = 0;
+  while (state.parcels.length > 0) {
+    let action = robotStrategy(state, memory);
+    state = state.move(action.direction);
+    memory = action.memory;
+    console.log(`Move to ${action.direction}`);
+    turns++;
+  }
+  console.log(`All parcels delivered in ${turns} turns.`);
+}
+
+let startingState = new VillageState("Post Office", initialParcels);
+
+console.log("Running fixedRouteRobot:");
+simulateDelivery(startingState, predefinedRoute, fixedRouteRobot);
